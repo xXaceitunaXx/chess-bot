@@ -1,6 +1,7 @@
 import asyncio
 import chess
 from bot import ChessBot
+from board import Board
 
 def print_board(board):
     """Print the current board state."""
@@ -41,6 +42,8 @@ async def play_game():
     # Map level to calculation time (0.1s to 5s)
     time_per_move = 0.1 + (level - 1) * (5.0 - 0.1) / 9
     bot = ChessBot(level=time_per_move)
+    board = Board()
+    
     if not await bot.initialize():
         print("Failed to initialize chess engine. Exiting...")
         return
@@ -59,24 +62,24 @@ async def play_game():
     print("  - Promotion: e8=Q")
     print("  - Disambiguation: Rae1 (rook from a-file), Nbd7 (knight from b-file)")
     print("    Use file (a-h) or rank (1-8) to specify which piece to move")
-    print_board(bot.get_board())
+    board.print_board()
 
-    while not bot.is_game_over():
-        user_input = get_move_from_user(bot.get_board())
-        match user_input:
+    while not board.is_game_over():
+        move, command = board.get_move_from_user()
+        match command:
             case "help":
                 print("Getting hint...")
-                hint = await bot.get_hint()
+                hint = await bot.get_hint(board.get_board())
                 if hint:
-                    print(f"Hint: move a {piece_name_from_symbol(hint)}.")
+                    print(f"Hint: move a {board.get_piece_name(hint)}.")
                 else:
                     print("Error getting hint.")
                 continue
             case "play":
                 print("Using best calculated move...")
-                bot_move = await bot.get_best_move()  # Will use stored move if exists
+                bot_move = await bot.get_best_move(board.get_board())  # Will use stored move if exists
                 if bot_move:
-                    print("Suggested move: ", bot.get_board().san(bot_move)) # SAN needs context
+                    print("Suggested move: ", board.get_move_san(bot_move))
                 else:
                     print("Could not get best move.")
                 continue
@@ -85,25 +88,26 @@ async def play_game():
                 await bot.close()
                 return
             case _:
-                move_san = bot.get_board().san(user_input)
-                move_uci = user_input.uci()
-                bot.make_move(user_input)
-                print(f"Your move: {move_san} (UCI: {move_uci})")
-                print_board(bot.get_board())
+                if move:
+                    move_san = board.get_move_san(move)
+                    move_uci = board.get_move_uci(move)
+                    board.make_move(move)
+                    print(f"Your move: {move_san} (UCI: {move_uci})")
+                    board.print_board()
 
-        if bot.is_game_over():
+        if board.is_game_over():
             break
 
         print("Bot is thinking...")
-        bot_move = await bot.get_best_move(force_recalculate=True)  # Force recalculation for bot's turn
+        bot_move = await bot.get_best_move(board.get_board(), force_recalculate=True)  # Force recalculation for bot's turn
         if bot_move:
-            move_san = bot.get_board().san(bot_move)
-            move_uci = bot_move.uci()
-            bot.make_move(bot_move)
+            move_san = board.get_move_san(bot_move)
+            move_uci = board.get_move_uci(bot_move)
+            board.make_move(bot_move)
             print(f"Bot played: {move_san} (UCI: {move_uci})")
-            print_board(bot.get_board())
+            board.print_board()
 
-    result = bot.get_game_result()
+    result = board.get_game_result()
     if result:
         if result.winner == chess.WHITE:
             print("You won!")
