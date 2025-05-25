@@ -23,6 +23,8 @@ wheels/
 # Virtual Environment
 venv/
 ENV/
+env/
+.env
 
 # IDE
 .idea/
@@ -30,6 +32,12 @@ ENV/
 *.swp
 *.swo
 
+# OS
+.DS_Store
+Thumbs.db
+
 # Project specific
 *.log
-.DS_Store 
+
+# Stockfish engine
+stockfish/ 
